@@ -43,6 +43,11 @@ export default async function AdminPage() {
         .limit(20),
     ]);
 
+  // Count of signed-up volunteers (head: true fetches only the count, no rows).
+  const { count: volunteerCount } = await supabase
+    .from("volunteers")
+    .select("*", { count: "exact", head: true });
+
   const initialActivity: ActivityEntry[] = (
     (activity ?? []) as unknown as ActivityRow[]
   ).map((row) => ({
@@ -54,7 +59,15 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">Admin Dashboard</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-bold text-slate-900">Admin Dashboard</h1>
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-right">
+          <div className="text-2xl font-bold tabular-nums text-slate-900">
+            {volunteerCount ?? 0}
+          </div>
+          <div className="text-xs text-slate-500">Volunteers signed up</div>
+        </div>
+      </div>
       <AdminDashboard
         initialTotals={(totals ?? []) as PartTotal[]}
         initialParts={(allParts ?? []) as AdminPartRow[]}
