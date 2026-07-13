@@ -6,6 +6,7 @@ import AggregateTotals from "./AggregateTotals";
 import PartsManagement, { type AdminPartRow } from "./PartsManagement";
 import LiveActivityFeed from "./LiveActivityFeed";
 import VolunteerSearch from "./VolunteerSearch";
+import AdminManagement from "./AdminManagement";
 import Leaderboard from "@/components/Leaderboard";
 import type { PartTotal, ActivityEntry } from "@/lib/types";
 
@@ -100,6 +101,7 @@ export default function AdminDashboard({
         <Leaderboard parts={activeParts} highlightId={currentVolunteerId} />
         <VolunteerSearch />
         <PartsManagement initialParts={initialParts} />
+        <AdminManagement currentVolunteerId={currentVolunteerId} />
       </div>
 
       {/* Right column — one-third width */}
