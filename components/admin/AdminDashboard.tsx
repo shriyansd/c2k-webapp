@@ -6,6 +6,7 @@ import AggregateTotals from "./AggregateTotals";
 import PartsManagement, { type AdminPartRow } from "./PartsManagement";
 import LiveActivityFeed from "./LiveActivityFeed";
 import VolunteerSearch from "./VolunteerSearch";
+import Leaderboard from "@/components/Leaderboard";
 import type { PartTotal, ActivityEntry } from "@/lib/types";
 
 type NewContribution = {
@@ -18,10 +19,12 @@ type NewContribution = {
 // Each insert bumps the matching aggregate tile and prepends to the live feed.
 // Parts management runs independently (no subscription).
 export default function AdminDashboard({
+  currentVolunteerId,
   initialTotals,
   initialParts,
   initialActivity,
 }: {
+  currentVolunteerId: string;
   initialTotals: PartTotal[];
   initialParts: AdminPartRow[];
   initialActivity: ActivityEntry[];
@@ -85,11 +88,16 @@ export default function AdminDashboard({
     };
   }, []);
 
+  const activeParts = initialParts
+    .filter((p) => p.is_active)
+    .map((p) => ({ id: p.part_id, name: p.name }));
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Left column — two-thirds width */}
       <div className="space-y-6 lg:col-span-2">
         <AggregateTotals totals={totals} live={live} />
+        <Leaderboard parts={activeParts} highlightId={currentVolunteerId} />
         <VolunteerSearch />
         <PartsManagement initialParts={initialParts} />
       </div>

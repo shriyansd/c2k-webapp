@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Tracker from "@/components/tracker/Tracker";
+import Leaderboard from "@/components/Leaderboard";
 import type { Part, PartTotal, HistoryEntry } from "@/lib/types";
 
 // Server Component: load active parts, the volunteer's personal totals, and
@@ -45,12 +46,20 @@ export default async function TrackerPage() {
     })
   );
 
+  const activeParts = ((parts ?? []) as Part[]).map((p) => ({
+    id: p.id,
+    name: p.name,
+  }));
+
   return (
-    <Tracker
-      volunteerId={user!.id}
-      initialParts={(parts ?? []) as Part[]}
-      initialTotals={(totals ?? []) as PartTotal[]}
-      initialHistory={initialHistory}
-    />
+    <div className="space-y-8">
+      <Tracker
+        volunteerId={user!.id}
+        initialParts={(parts ?? []) as Part[]}
+        initialTotals={(totals ?? []) as PartTotal[]}
+        initialHistory={initialHistory}
+      />
+      <Leaderboard parts={activeParts} highlightId={user!.id} />
+    </div>
   );
 }

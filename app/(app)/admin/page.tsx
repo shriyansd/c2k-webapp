@@ -69,6 +69,7 @@ export default async function AdminPage() {
         </div>
       </div>
       <AdminDashboard
+        currentVolunteerId={user.id}
         initialTotals={(totals ?? []) as PartTotal[]}
         initialParts={(allParts ?? []) as AdminPartRow[]}
         initialActivity={initialActivity}

@@ -49,6 +49,8 @@ connections):
    - `supabase/migrations/0002_seed_parts.sql` — the 12 default parts.
    - `supabase/migrations/0003_volunteer_stats.sql` — the admin per-volunteer
      stats RPC (powers the "Volunteer Stats" search on the dashboard).
+   - `supabase/migrations/0004_leaderboard.sql` — the leaderboard RPC (period +
+     part filters; shown to volunteers and admins).
 
    > Prefer the CLI? With the [Supabase CLI](https://supabase.com/docs/guides/cli)
    > linked to your project, run `supabase db push`.
@@ -171,7 +173,7 @@ lib/
   time.ts, types.ts
 middleware.ts             Session refresh + auth redirects
 supabase/migrations/      0001_init.sql, 0002_seed_parts.sql,
-                          0003_volunteer_stats.sql
+                          0003_volunteer_stats.sql, 0004_leaderboard.sql
 ```
 
 ## Security (Row Level Security)
