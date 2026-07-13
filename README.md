@@ -43,10 +43,12 @@ connections):
 ## 2. Set up the Supabase database
 
 1. Create a new project in the Supabase dashboard.
-2. Open **SQL Editor** and run the two migration files, in order:
+2. Open **SQL Editor** and run the migration files, in order:
    - `supabase/migrations/0001_init.sql` — tables, indexes, RLS policies, the
      new-user trigger, and the aggregate RPCs.
    - `supabase/migrations/0002_seed_parts.sql` — the 12 default parts.
+   - `supabase/migrations/0003_volunteer_stats.sql` — the admin per-volunteer
+     stats RPC (powers the "Volunteer Stats" search on the dashboard).
 
    > Prefer the CLI? With the [Supabase CLI](https://supabase.com/docs/guides/cli)
    > linked to your project, run `supabase db push`.
@@ -58,7 +60,18 @@ connections):
 
 4. Email confirmation is **not** required by this app. Under
    **Authentication → Providers → Email**, make sure "Confirm email" is turned
-   **off** so signups can log in immediately.
+   **off** so signups can log in immediately. (This is essential: volunteers sign
+   up with a **username**, not a real email — see below — so confirmation emails
+   could never be delivered anyway.)
+
+   > **Username-based accounts (no personal info).** The UI collects only a
+   > username + password. Supabase Auth is email-based, so the app derives a
+   > synthetic internal email from the username (`jordan` → `jordan@c2k.local`).
+   > No real email is ever collected or sent. The username is stored as the
+   > volunteer's `display_name` and shown throughout the app. Usernames are
+   > unique automatically (the synthetic email is unique). Accounts created
+   > earlier with a real email still work — enter the full email in the Username
+   > field to log in.
 
 5. **Data API / Security settings** (Project Settings → API, or shown during
    project creation):
@@ -97,7 +110,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. Sign up (display name + email + password), and you
+Open <http://localhost:3000>. Sign up (username + password — no email), and you
 land on the tracker. Tap a part to log your first contribution — start to first
 log takes well under a minute.
 
@@ -110,16 +123,14 @@ first admin (by design — it prevents privilege escalation), so add it manually
 
 1. Have the person **sign up** in the app first. This creates their row in
    `public.volunteers` (via the signup trigger).
-2. In Supabase **SQL Editor**, find their id and insert it into `admins`:
+2. In Supabase **SQL Editor**, grant admin by their username in one statement:
 
    ```sql
-   -- Find the volunteer's id by email:
-   select id, email, display_name from public.volunteers where email = 'admin@example.com';
-
-   -- Grant admin using that id:
    insert into public.admins (volunteer_id)
-   values ('paste-the-volunteer-id-here');
+   select id from public.volunteers where display_name = 'their-username';
    ```
+
+   (Look up who exists with `select id, display_name from public.volunteers;`.)
 
 3. Have them reload the app — an **Admin** link now appears in the nav. Existing
    admins can add further admins directly in the `admins` table (or you can build
@@ -159,7 +170,8 @@ lib/
   supabase/               client.ts, server.ts, middleware.ts
   time.ts, types.ts
 middleware.ts             Session refresh + auth redirects
-supabase/migrations/      0001_init.sql, 0002_seed_parts.sql
+supabase/migrations/      0001_init.sql, 0002_seed_parts.sql,
+                          0003_volunteer_stats.sql
 ```
 
 ## Security (Row Level Security)

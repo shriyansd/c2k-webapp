@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import AggregateTotals from "./AggregateTotals";
 import PartsManagement, { type AdminPartRow } from "./PartsManagement";
 import LiveActivityFeed from "./LiveActivityFeed";
+import VolunteerSearch from "./VolunteerSearch";
 import type { PartTotal, ActivityEntry } from "@/lib/types";
 
 type NewContribution = {
@@ -89,6 +90,7 @@ export default function AdminDashboard({
       {/* Left column — two-thirds width */}
       <div className="space-y-6 lg:col-span-2">
         <AggregateTotals totals={totals} live={live} />
+        <VolunteerSearch />
         <PartsManagement initialParts={initialParts} />
       </div>
 
