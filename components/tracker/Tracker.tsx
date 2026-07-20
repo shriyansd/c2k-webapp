@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Part, PartTotal, HistoryEntry } from "@/lib/types";
 import PersonalTotals from "./PersonalTotals";
@@ -13,6 +13,12 @@ import ErrorBanner from "@/components/ui/ErrorBanner";
 const UNDO_MS = 5000;
 const ABUSE_WINDOW_MS = 60_000;
 const ABUSE_THRESHOLD = 10; // >10 of the same part within the window triggers the modal
+
+type HistoryRow = {
+  id: string;
+  created_at: string;
+  parts: { name: string } | null;
+};
 
 // Client orchestrator for the volunteer tracker. Owns optimistic totals/history
 // updates, the 5-second undo, and the soft abuse check. Never polls — all data
@@ -51,6 +57,50 @@ export default function Tracker({
 
   // Per-part timestamps of recent successful adds, for the abuse window check.
   const tapTimes = useRef<Map<string, number[]>>(new Map());
+
+  const refreshVolunteerData = useCallback(async () => {
+    const [{ data: nextTotals }, { data: nextHistory }] = await Promise.all([
+      supabase.rpc("get_my_part_totals"),
+      supabase
+        .from("contributions")
+        .select("id, created_at, parts(name)")
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+
+    if (nextTotals) {
+      setTotals(nextTotals as PartTotal[]);
+    }
+
+    if (nextHistory) {
+      const rows = nextHistory as unknown as HistoryRow[];
+      setHistory(
+        rows.map((row) => ({
+          id: row.id,
+          created_at: row.created_at,
+          part_name: row.parts?.name ?? "Unknown part",
+        }))
+      );
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    void refreshVolunteerData();
+
+    function refreshOnVisible() {
+      if (document.visibilityState === "visible") {
+        void refreshVolunteerData();
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    window.addEventListener("focus", refreshVolunteerData);
+
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnVisible);
+      window.removeEventListener("focus", refreshVolunteerData);
+    };
+  }, [refreshVolunteerData]);
 
   const clearUndoTimer = () => {
     if (undoTimer.current) {

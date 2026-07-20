@@ -19,8 +19,10 @@ export interface AdminPartRow {
 // preserves its historical count (shown greyed out here).
 export default function PartsManagement({
   initialParts,
+  onPartsChange,
 }: {
   initialParts: AdminPartRow[];
+  onPartsChange?: (parts: AdminPartRow[]) => void;
 }) {
   const supabase = createClient();
 
@@ -33,6 +35,18 @@ export default function PartsManagement({
   // The part pending a delete confirmation, and the in-flight delete state.
   const [deleteTarget, setDeleteTarget] = useState<AdminPartRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Functional-update style (like setState's updater form) so concurrent
+  // add/toggle/delete calls never clobber each other with a stale `parts`
+  // closure — each update is derived from the latest state, not from
+  // whatever `parts` looked like when the async handler started.
+  function updateParts(updater: (prev: AdminPartRow[]) => AdminPartRow[]) {
+    setParts((prev) => {
+      const next = updater(prev);
+      onPartsChange?.(next);
+      return next;
+    });
+  }
 
   async function addPart(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +72,7 @@ export default function PartsManagement({
       return;
     }
 
-    setParts((prev) =>
+    updateParts((prev) =>
       [
         {
           part_id: data.id,
@@ -90,7 +104,7 @@ export default function PartsManagement({
       return;
     }
 
-    setParts((prev) =>
+    updateParts((prev) =>
       prev.map((p) =>
         p.part_id === part.part_id ? { ...p, is_active: next } : p
       )
@@ -122,7 +136,7 @@ export default function PartsManagement({
       return;
     }
 
-    setParts((prev) => prev.filter((p) => p.part_id !== part.part_id));
+    updateParts((prev) => prev.filter((p) => p.part_id !== part.part_id));
     setDeleting(false);
     setDeleteTarget(null);
   }

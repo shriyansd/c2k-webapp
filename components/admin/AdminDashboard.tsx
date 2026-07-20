@@ -16,9 +16,10 @@ type NewContribution = {
   quantity: number;
 };
 
-// Owns the ONE real-time subscription in the entire app (contributions INSERT).
-// Each insert bumps the matching aggregate tile and prepends to the live feed.
-// Parts management runs independently (no subscription).
+// Owns the ONE real-time subscription in the entire app (contribution changes).
+// Inserts bump the matching aggregate tile and prepend to the live feed. Deletes
+// can happen through volunteer undo/remove actions, so those trigger one compact
+// refresh to keep admin totals and activity accurate.
 export default function AdminDashboard({
   currentVolunteerId,
   initialTotals,
@@ -31,18 +32,72 @@ export default function AdminDashboard({
   initialActivity: ActivityEntry[];
 }) {
   const [totals, setTotals] = useState<PartTotal[]>(initialTotals);
+  const [parts, setParts] = useState<AdminPartRow[]>(initialParts);
   const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
   const [live, setLive] = useState(false);
 
+  function handlePartsChange(nextParts: AdminPartRow[]) {
+    setParts(nextParts);
+    setTotals((prev) => {
+      const totalsByPartId = new Map(prev.map((t) => [t.part_id, t.total]));
+
+      return nextParts
+        .filter((part) => part.is_active)
+        .map((part) => ({
+          part_id: part.part_id,
+          name: part.name,
+          total: totalsByPartId.get(part.part_id) ?? part.total,
+        }));
+    });
+  }
+
   useEffect(() => {
     const supabase = createClient();
+
+    async function refreshDashboard() {
+      const [{ data: nextTotals }, { data: nextActivity }] = await Promise.all([
+        supabase.rpc("get_part_totals"),
+        supabase
+          .from("contributions")
+          .select("id, created_at, parts(name), volunteers(display_name)")
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
+
+      if (nextTotals) {
+        setTotals(nextTotals as PartTotal[]);
+      }
+
+      if (nextActivity) {
+        const rows = nextActivity as unknown as {
+          id: string;
+          created_at: string;
+          parts: { name: string } | null;
+          volunteers: { display_name: string | null } | null;
+        }[];
+
+        setActivity(
+          rows.map((row) => ({
+            id: row.id,
+            created_at: row.created_at,
+            part_name: row.parts?.name ?? "Unknown part",
+            volunteer_name: row.volunteers?.display_name ?? "A volunteer",
+          }))
+        );
+      }
+    }
 
     const channel = supabase
       .channel("admin-contributions")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "contributions" },
+        { event: "*", schema: "public", table: "contributions" },
         async (payload) => {
+          if (payload.eventType !== "INSERT") {
+            await refreshDashboard();
+            return;
+          }
+
           const row = payload.new as NewContribution;
 
           // Optimistically bump the aggregate tile for this part (no query).
@@ -89,7 +144,7 @@ export default function AdminDashboard({
     };
   }, []);
 
-  const activeParts = initialParts
+  const activeParts = parts
     .filter((p) => p.is_active)
     .map((p) => ({ id: p.part_id, name: p.name }));
 
@@ -100,7 +155,10 @@ export default function AdminDashboard({
         <AggregateTotals totals={totals} live={live} />
         <Leaderboard parts={activeParts} highlightId={currentVolunteerId} />
         <VolunteerSearch />
-        <PartsManagement initialParts={initialParts} />
+        <PartsManagement
+          initialParts={initialParts}
+          onPartsChange={handlePartsChange}
+        />
         <AdminManagement currentVolunteerId={currentVolunteerId} />
       </div>
 
