@@ -218,7 +218,15 @@ export default function PartsManagement({
                   </button>
                 </td>
                 <td className="px-2 py-3 text-slate-400">
-                  {new Date(part.created_at).toLocaleDateString()}
+                  {/* Pinned to UTC so the server render (Vercel, UTC) and the
+                      client hydration render (the admin's local timezone)
+                      always produce the same string — otherwise a part
+                      created near UTC midnight renders a different calendar
+                      date on each side and React throws a hydration-mismatch
+                      error. */}
+                  {new Date(part.created_at).toLocaleDateString(undefined, {
+                    timeZone: "UTC",
+                  })}
                 </td>
                 <td className="px-2 py-3 text-right">
                   <button
